@@ -37,10 +37,10 @@ char *generate_accessory_name_alloc()
    esp_wifi_get_mac(ESP_IF_WIFI_STA, macaddr);
    uint8_t rnd = (uint8_t)(esp_random() & 0xFF);
 
-   int l = snprintf(NULL, 0, "led-%02X%02X%02X-%02X", macaddr[3], macaddr[4], macaddr[5], rnd);
+   int l = snprintf(NULL, 0, "mea-%02X%02X%02X-%02X", macaddr[3], macaddr[4], macaddr[5], rnd);
    char *_accessory_name = malloc(l+1);
    if(_accessory_name) {
-      snprintf(_accessory_name, l+1, "led-%02X%02X%02X-%02X", macaddr[3], macaddr[4], macaddr[5], rnd);
+      snprintf(_accessory_name, l+1, "mea-%02X%02X%02X-%02X", macaddr[3], macaddr[4], macaddr[5], rnd);
    }
    return _accessory_name;
 }
@@ -195,7 +195,7 @@ struct mea_config_s *mea_config_init()
    ESP_LOGI(TAG, "ACCESSORY_NAME=%s", mea_config.accessory_name);
    ESP_LOGI(TAG, "ACCESSORY_PASSWORD=%s", mea_config.accessory_password);
    ESP_LOGI(TAG, "WIFI_SSID=%s", mea_config.wifi_ssid);
-   ESP_LOGI(TAG, "WIFI_PASSWORD=%s", mea_config.wifi_password);
+//   ESP_LOGI(TAG, "WIFI_PASSWORD=%s", mea_config.wifi_password);
 
    ret = nvs_commit(my_handle);
    nvs_close(my_handle);

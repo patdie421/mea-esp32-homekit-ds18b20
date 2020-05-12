@@ -20,6 +20,17 @@ int _nb_contacts = 0;
 struct contact_s *_contacts;
 
 
+int8_t contact_get(int8_t id)
+{
+   if(id<_nb_contacts) {
+      return _contacts[id].last_state;
+   }
+   else {
+      return -1;
+   }
+}
+
+
 void gpio_in_task(void* arg)
 {
    for(;;) {

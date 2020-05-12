@@ -189,10 +189,10 @@ int wifi_init_softap(char *ssid, char *password)
 }
 
 
-int network_init(struct mea_config_s *mea_config, int ap_mode)
+int8_t network_init(struct mea_config_s *mea_config, int8_t ap_mode)
 {
-   int ret=0;
-   int mode=0;
+   int8_t ret=0;
+   int8_t mode=0;
 
    if(mea_config->wifi_configured_flag==0 || ap_mode == 1) {
      mode=2;

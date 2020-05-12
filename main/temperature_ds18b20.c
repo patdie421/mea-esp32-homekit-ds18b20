@@ -40,47 +40,55 @@ int temperature_ds18b20_init(temperature_ds18b20_callback_t cb, void *userdata)
    _temperature_ds18b20_data.cb=cb;
    _temperature_ds18b20_data.userdata=userdata;
 
-    // Stable readings require a brief period before communication
-   vTaskDelay(2000.0 / portTICK_PERIOD_MS);
 
    owb = owb_gpio_initialize(&ds18b20_driver_info, GPIO_DS18B20_0);
    owb_use_crc(owb, true); // enable CRC check for ROM code
 
-   // Find all connected devices
-   OneWireBus_ROMCode device_rom_codes[MAX_DEVICES] = {0};
-   int num_devices = 0;
-   OneWireBus_SearchState search_state = {0};
-   bool found = false;
+   while(1) {
+      ESP_LOGI(TAG, "search devices ...");
+      // Stable readings require a brief period before communication
+      vTaskDelay(5000.0 / portTICK_PERIOD_MS);
 
-   owb_search_first(owb, &search_state, &found);
-   while (found) {
-      char rom_code_s[17];
-      owb_string_from_rom_code(search_state.rom_code, rom_code_s, sizeof(rom_code_s));
-      ESP_LOGI(TAG, "found %d : %s", num_devices, rom_code_s);
-      device_rom_codes[num_devices] = search_state.rom_code;
-      ++num_devices;
-      owb_search_next(owb, &search_state, &found);
-   }
-   ESP_LOGI(TAG, "Found %d device%s", num_devices, num_devices == 1 ? "" : "s");
-   ds18b20_nb_devices = num_devices; 
-   if(ds18b20_nb_devices < 1) {
-      return 0;
-   }
+      // Find all connected devices
+      OneWireBus_ROMCode device_rom_codes[MAX_DEVICES] = {0};
+      int num_devices = 0;
+      OneWireBus_SearchState search_state = {0};
+      bool found = false;
 
-   // Create DS18B20 devices on the 1-Wire bus
-   for (int i = 0; i < num_devices; ++i) {
-      DS18B20_Info *ds18b20_info = ds18b20_malloc(); // heap allocation
-      ds18b20_devices[i] = ds18b20_info;
-
-      if (num_devices == 1) {
-         ds18b20_init_solo(ds18b20_info, owb); // only one device on bus
+      owb_search_first(owb, &search_state, &found);
+      while (found) {
+         char rom_code_s[17];
+         owb_string_from_rom_code(search_state.rom_code, rom_code_s, sizeof(rom_code_s));
+         ESP_LOGI(TAG, "found #%d : %s", num_devices, rom_code_s);
+         device_rom_codes[num_devices] = search_state.rom_code;
+         ++num_devices;
+         owb_search_next(owb, &search_state, &found);
       }
-      else {
-         ds18b20_init(ds18b20_info, owb, device_rom_codes[i]); // associate with bus and device
+      ESP_LOGI(TAG, "Found %d device%s", num_devices, num_devices == 1 ? "" : "s");
+      ds18b20_nb_devices = num_devices; 
+
+      if(ds18b20_nb_devices < 1) {
+         ESP_LOGE(TAG, "no device found");
+         continue;
       }
-      ds18b20_use_crc(ds18b20_info, true); // enable CRC check on all reads
-      ds18b20_set_resolution(ds18b20_info, DS18B20_RESOLUTION);
+
+      // Create DS18B20 devices on the 1-Wire bus
+      for (int i = 0; i < num_devices; ++i) {
+         DS18B20_Info *ds18b20_info = ds18b20_malloc(); // heap allocation
+         ds18b20_devices[i] = ds18b20_info;
+
+         if (num_devices == 1) {
+            ds18b20_init_solo(ds18b20_info, owb); // only one device on bus
+         }
+         else {
+            ds18b20_init(ds18b20_info, owb, device_rom_codes[i]); // associate with bus and device
+         }
+         ds18b20_use_crc(ds18b20_info, true); // enable CRC check on all reads
+         ds18b20_set_resolution(ds18b20_info, DS18B20_RESOLUTION);
+      }
+      break;
    }
+   ESP_LOGI(TAG, "init done");
    return ds18b20_nb_devices;
 }
 
@@ -97,7 +105,7 @@ void temperature_ds18b20_task(void *_args) {
              _temperature_ds18b20_data.cb(temperature_value, _temperature_ds18b20_data.userdata);
           }
        }
-       vTaskDelay(5000 / portTICK_PERIOD_MS);
+       vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
 }
 

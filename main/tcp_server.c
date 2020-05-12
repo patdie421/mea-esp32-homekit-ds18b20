@@ -22,13 +22,16 @@
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
 
+#include "tcp_server.h"
 #include "config.h"
+#include "contacts.h"
 
 #define PORT 8081
 
-static const char *TOKEN = "sfsrezrfsdg";
+static const char *TOKEN = "x";
 static const char *TAG = "tcp_server";
-
+static int8_t _mode = 0;
+struct mea_config_s *_mea_config = NULL; 
 
 void send_data(const int sock, char *data)
 {
@@ -58,27 +61,63 @@ static void do_request(const int sock)
       ESP_LOGW(TAG, "Connection closed");
    }
    else {
-      rx_buffer[len]=0;
-      ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
+      char token[17]="", parameters[81]="";
+      char cmd=0;
+      int r1=0,r2=0;
 
-      char token[17], parameters[81];
-      char cmd;
-      int r=0; 
-      int n=sscanf(rx_buffer,"%16[^:]:%c:%80s%n",token,&cmd,parameters,&r);
-      if(n==3) {
+      rx_buffer[len]=0;
+
+      int l=strlen(rx_buffer);
+      int n=sscanf(rx_buffer,"%16[^:]:%c%n:%80s%n",token,&cmd,&r1,parameters,&r2);
+      if(n==3 && r2==l) {
          switch(cmd) {
+            case 'O': {
+               int id,v,r;
+               n=sscanf(parameters, "%d/%d%n",&id,&v,&r); 
+               if(n==2 && r==strlen(parameters)) {
+                  ESP_LOGI(TAG,"relay %d set to: %d",id,v);
+                  send_data(sock,"OK");
+               }
+               else {
+                  send_data(sock,"???");
+               } 
+               break;
+            };
+            case 'I': {
+               int id,r;
+               n=sscanf(parameters, "%d%n",&id,&r); 
+               if(n==1 && r==strlen(parameters)) {
+                  ESP_LOGI(TAG,"input %d get",id);
+                  int8_t v=contact_get(id);
+                  if(v<0) {
+                     ESP_LOGI(TAG,"KO");
+                     send_data(sock,"KO");
+                  }
+                  else {
+                     char s[2]="";
+                     s[0] = '0' + ((v == 0) ? 0 : 1);
+                     s[1] = 0;
+                     send_data(sock,s);
+                  }
+               }
+               else {
+                  send_data(sock,"???");
+               } 
+               break;
+            };
             case 'W': {
-               ESP_LOGI(TAG, "WIFI set ...");
+               ESP_LOGI(TAG, "WIFI setting ...");
+               int r=0;
                char ssid[41], password[41];
                n=sscanf(parameters,"%40[^/]/%40s%n",ssid,password,&r);
                if(n==2 && r==strlen(parameters)) { 
                   set_mea_config_wifi(ssid, password);
                   send_data(sock,"OK");
-                  ESP_LOGI(TAG, "WIFI set OK");
+                  ESP_LOGI(TAG, "WIFI setting done");
                }
                else {
                   send_data(sock,"KO");
-                  ESP_LOGI(TAG, "WIFI set KO");
+                  ESP_LOGI(TAG, "WIFI setting KO");
                }
                break;
             };
@@ -89,11 +128,27 @@ static void do_request(const int sock)
       
          }
       }
-      else if(n==2) {
+      else if(n==2 && r1==l) {
          switch(cmd) {
-            case 'C':
+            case 'w':
+               {
+                  char s[81]="";
+
+                  sprintf(s,"WIFI_SSID = %s\n",_mea_config->wifi_ssid);
+                  send_data(sock,s);
+                  sprintf(s,"HOMEKIT_NAME = %s\n",_mea_config->accessory_name);
+                  send_data(sock,s);
+                  sprintf(s,"HOMEKIT_PASSWORD = %s\n",_mea_config->accessory_password);
+                  send_data(sock,s);
+               }
+               break;
+            case 'C': // reset wifi configuration
                reset_mea_config_wifi();
                send_data(sock,"OK");
+               if(_mode == TCP_SERVER_RESTRICTED) {
+                  vTaskDelay(1000 / portTICK_PERIOD_MS);
+                  esp_restart();
+               }
                break;
             case 'R':
                ESP_LOGW(TAG, "Restart ...");
@@ -118,7 +173,7 @@ static void do_request(const int sock)
 
 static void tcp_server_task(void *pvParameters)
 {
-   int addr_family = (int)pvParameters;
+//   int addr_family = (int)pvParameters;
    int ip_protocol = 0;
    struct sockaddr_in dest_addr;
 
@@ -128,7 +183,8 @@ static void tcp_server_task(void *pvParameters)
    dest_addr_ip4->sin_port = htons(PORT);
    ip_protocol = IPPROTO_IP;
 
-   int listen_sock = socket(addr_family, SOCK_STREAM, ip_protocol);
+//   int listen_sock = socket(addr_family, SOCK_STREAM, ip_protocol);
+   int listen_sock = socket(AF_INET, SOCK_STREAM, ip_protocol);
    if (listen_sock < 0) {
       ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
       vTaskDelete(NULL);
@@ -157,7 +213,6 @@ static void tcp_server_task(void *pvParameters)
          break;
       }
 
-
       do_request(sock);
 
       shutdown(sock, 0);
@@ -170,7 +225,9 @@ CLEAN_UP:
 }
 
 
-void tcp_server_init()
+void tcp_server_init(uint8_t mode)
 {
+   _mode = mode;
+   _mea_config=get_mea_config();
    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
 }

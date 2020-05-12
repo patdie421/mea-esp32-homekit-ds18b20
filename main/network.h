@@ -5,6 +5,6 @@
 
 
 // void network_init();
-int network_init(struct mea_config_s *mea_config, int ap_mode);
+int8_t network_init(struct mea_config_s *mea_config, int8_t ap_mode);
 
 #endif
