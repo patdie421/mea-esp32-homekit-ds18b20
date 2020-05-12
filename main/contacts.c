@@ -74,7 +74,7 @@ void gpio_in_init(struct contact_s my_contacts[], int nb_contacts) {
    io_conf.mode = GPIO_MODE_INPUT;
    //enable pull-up mode
    io_conf.pull_up_en = 1;
-//   io_conf.pull_down_en = 1;
+   io_conf.pull_down_en = 0;
 
    gpio_config(&io_conf);
 

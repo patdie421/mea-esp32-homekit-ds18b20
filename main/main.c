@@ -22,6 +22,7 @@
 #include "config.h"
 #include "status_led.h"
 #include "temperature_ds18b20.h"
+#include "temperature_dht.h"
 #include "tcp_server.h"
 #include "relays.h"
 #include "contacts.h"
@@ -72,14 +73,35 @@ homekit_value_t contact_state_getter(homekit_characteristic_t *c) {
 
 
 /*
+ * dht temperature/humidity data and callbacks
+ */
+void update_temperature_dht_callback(float t, void *data)
+{
+   homekit_characteristic_t *c = (homekit_characteristic_t *)data;
+   c->value.float_value = t;
+
+   homekit_characteristic_notify(c, HOMEKIT_FLOAT(t));
+}
+
+
+void update_humidity_dht_callback(float h, void *data)
+{
+   homekit_characteristic_t *c = (homekit_characteristic_t *)data;
+   c->value.float_value = h;
+
+   homekit_characteristic_notify(c, HOMEKIT_FLOAT(h));
+}
+
+
+/*
  * temperature data and callbacks
  */
-void update_temperature_callback(float v, void *data)
+void update_temperature_callback(float t, void *data)
 {
-   homekit_characteristic_t *t = (homekit_characteristic_t *)data;
-   t->value.float_value = v;
+   homekit_characteristic_t *c = (homekit_characteristic_t *)data;
+   c->value.float_value = t;
 
-   homekit_characteristic_notify(t, HOMEKIT_FLOAT(v));
+   homekit_characteristic_notify(c, HOMEKIT_FLOAT(t));
 }
 
 
@@ -124,6 +146,8 @@ void relay_state_setter(homekit_characteristic_t *c, const homekit_value_t value
 #define MAX_SERVICES 20
 homekit_accessory_t *accessories[2];
 homekit_characteristic_t temperature = HOMEKIT_CHARACTERISTIC_(CURRENT_TEMPERATURE, 0);
+homekit_characteristic_t temperature_dht = HOMEKIT_CHARACTERISTIC_(CURRENT_TEMPERATURE, 0);
+homekit_characteristic_t humidity_dht = HOMEKIT_CHARACTERISTIC_(CURRENT_RELATIVE_HUMIDITY, 0);
 
 
 homekit_server_config_t config = {
@@ -160,11 +184,22 @@ homekit_server_config_t *init_accessory() {
    });
 
    *(s++) = NEW_HOMEKIT_SERVICE(TEMPERATURE_SENSOR, .primary=true, .characteristics=(homekit_characteristic_t*[]) {
-      NEW_HOMEKIT_CHARACTERISTIC(NAME, "temperature"),
-      &temperature,
+      NEW_HOMEKIT_CHARACTERISTIC(NAME, "ambient temperature"),
+      &temperature_dht,
       NULL
    });
 
+   *(s++) = NEW_HOMEKIT_SERVICE(HUMIDITY_SENSOR, .primary=true, .characteristics=(homekit_characteristic_t*[]) {
+      NEW_HOMEKIT_CHARACTERISTIC(NAME, "ambient humidity"),
+      &humidity_dht,
+      NULL
+   });
+
+   *(s++) = NEW_HOMEKIT_SERVICE(TEMPERATURE_SENSOR, .characteristics=(homekit_characteristic_t*[]) {
+      NEW_HOMEKIT_CHARACTERISTIC(NAME, "temperature probe"),
+      &temperature,
+      NULL
+   });
 
    for(int i=0;i<NB_RELAYS;i++) {
       my_relays[i].relay=(void *)NEW_HOMEKIT_CHARACTERISTIC(ON, false, .getter_ex=relay_state_getter, .setter_ex=relay_state_setter, NULL);
@@ -209,9 +244,11 @@ void sta_network_ready() {
 
    gpio_in_init(my_contacts, NB_CONTACTS);
 
+   temperature_dht_init(update_temperature_dht_callback,(void *)&temperature_dht, update_humidity_dht_callback, (void *)&humidity_dht);
+   temperature_dht_start();
+
    temperature_ds18b20_init(update_temperature_callback,(void *)&temperature);
    temperature_ds18b20_start();
-
 }
 
 
@@ -226,6 +263,7 @@ struct contact_s startup_contact[1] = {
    { .last_state=-1, .gpio_pin=23, .name="init", .callback=NULL, .status=1  }
 };
 
+#define BUTTON_PUSHED 1
 int select_startup_mode()
 {
    int8_t startup_mode=0;
@@ -233,12 +271,12 @@ int select_startup_mode()
    while(startup_contact[0].last_state==-1) { // wait gpio_in_init done
       vTaskDelay(1);
    }
-   if(startup_contact[0].last_state==0) {
+   if(startup_contact[0].last_state==BUTTON_PUSHED) {
       int16_t i=0;
-      for(;startup_contact[0].last_state==0 && i<5000/portTICK_PERIOD_MS;i++) { // wait 5s or button released
+      for(;startup_contact[0].last_state==BUTTON_PUSHED && i<5000/portTICK_PERIOD_MS;i++) { // wait 5s or button released
          vTaskDelay(1);
       }
-      if(i>=5000/portTICK_PERIOD_MS && startup_contact[0].last_state==0) { // button pressed during 5 seconds ?
+      if(i>=5000/portTICK_PERIOD_MS && startup_contact[0].last_state==BUTTON_PUSHED) { // button pressed during 5 seconds ?
          startup_mode=1;
       }
    }
