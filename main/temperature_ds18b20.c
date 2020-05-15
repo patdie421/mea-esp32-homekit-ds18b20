@@ -5,6 +5,7 @@
 #include <esp_log.h>
 
 #include <ds18x20.h>
+#include "ds18b20_add.h"
 
 #include "temperature_ds18b20.h"
 
@@ -18,9 +19,9 @@ struct temperature_ds18b20_data {
 
 
 #define MAX_SENSORS 8
-#define RESCAN_INTERVAL 8
+#define RESCAN_INTERVAL 720
 static const gpio_num_t SENSOR_GPIO = 5;
-static const uint32_t LOOP_DELAY_MS = 5000;
+static const uint32_t LOOP_DELAY_MS = 10000;
 
 static ds18x20_addr_t addrs[MAX_SENSORS];
 static float temps[MAX_SENSORS];
@@ -38,12 +39,20 @@ int temperature_ds18b20_init(temperature_ds18b20_callback_t cb, void *userdata)
 }
 
 
+float temperature_ds18b20_get()
+{
+   return temps[0];
+}
+
+
 void temperature_ds18b20_task(void *_args)
 {
    while (1) {
       // Every RESCAN_INTERVAL samples, check to see if the sensors connected
       // to our bus have changed.
       sensor_count = ds18x20_scan_devices(SENSOR_GPIO, addrs, MAX_SENSORS);
+
+      ds18b20_set_resolution(SENSOR_GPIO, ds18x20_ANY, DS18B20_RESOLUTION_12_BIT);
 
       if (sensor_count < 1) {
          ESP_LOGI(TAG, "No sensors detected!");
@@ -64,7 +73,7 @@ void temperature_ds18b20_task(void *_args)
                uint32_t addr0 = addrs[j] >> 32;
                uint32_t addr1 = addrs[j];
                float temp_c = temps[j];
-               ESP_LOGI(TAG, "Sensor %08x%08x reports %f deg C", addr0, addr1, temp_c);
+               ESP_LOGI(TAG, "Sensor %08x%08x reports %f °C", addr0, addr1, temp_c);
                if(_temperature_ds18b20_data.cb) {
                   _temperature_ds18b20_data.cb(temp_c, _temperature_ds18b20_data.userdata);
                }
@@ -73,7 +82,7 @@ void temperature_ds18b20_task(void *_args)
             uint32_t addr0 = addrs[0] >> 32;
             uint32_t addr1 = addrs[0];
             float temp_c = temps[0];
-            ESP_LOGI(TAG, "Sensor %08x%08x reports %f deg C", addr0, addr1, temp_c);
+            ESP_LOGI(TAG, "Sensor %08x%08x reports %.1f deg C", addr0, addr1, temp_c);
             if(_temperature_ds18b20_data.cb) {
                _temperature_ds18b20_data.cb(temp_c, _temperature_ds18b20_data.userdata);
             }

@@ -24,6 +24,7 @@
 #include "temperature_ds18b20.h"
 #include "temperature_dht.h"
 #include "tcp_server.h"
+#include "xpl_server.h"
 #include "relays.h"
 #include "contacts.h"
 
@@ -115,6 +116,18 @@ struct relay_s my_relays[NB_RELAYS] = {
    { .gpio_pin=22, .name="Relay 3", .status=1 },
    { .gpio_pin=25, .name="Relay 4", .status=1 }
 };
+
+
+int8_t update_relay(uint8_t r)
+{
+   if(r<NB_RELAYS) {
+      homekit_characteristic_t *_c = (homekit_characteristic_t *)(my_relays[r].relay);
+      _c->value.bool_value=relay_get(r);
+      homekit_characteristic_notify(_c, HOMEKIT_BOOL(_c->value.bool_value));
+      return 0;
+   }
+   return -1;
+}
 
 
 homekit_value_t relay_state_getter(homekit_characteristic_t *c)
@@ -240,8 +253,6 @@ void sta_network_ready() {
 
    vTaskDelay(2000 / portTICK_PERIOD_MS);
 
-   tcp_server_init(TCP_SERVER_RESTRICTED);
-
    gpio_in_init(my_contacts, NB_CONTACTS);
 
    temperature_dht_init(update_temperature_dht_callback,(void *)&temperature_dht, update_humidity_dht_callback, (void *)&humidity_dht);
@@ -249,13 +260,16 @@ void sta_network_ready() {
 
    temperature_ds18b20_init(update_temperature_callback,(void *)&temperature);
    temperature_ds18b20_start();
+
+   tcp_server_init(TCP_SERVER_RESTRICTED);
+   xpl_server_init("mea-test.home");
 }
 
 
 void ap_network_ready() {
    status_led_set_interval(50);
 
-   tcp_server_init(TCP_SERVER_FULL);
+   tcp_server_init(TCP_SERVER_CONFIG);
 }
 
 

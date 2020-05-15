@@ -13,6 +13,9 @@
 
 static char *TAG = "dht11";
 
+static int16_t temperature = 0;
+static int16_t humidity = 0;
+
 struct dht_data {
    temperature_dht_callback_t cb_t;
    void *userdata_t;
@@ -33,11 +36,20 @@ int temperature_dht_init(temperature_dht_callback_t cb_t, void *userdata_t, temp
 }
 
 
+float temperature_dht_get_t()
+{
+   return temperature / 10.0;
+}
+
+
+float temperature_dht_get_h()
+{
+   return humidity / 10.0;
+}
+
+
 void temperature_dht_task(void *_args)
 {
-   int16_t temperature = 0;
-   int16_t humidity = 0;
-
    // DHT sensors that come mounted on a PCB generally have
    // pull-up resistors on the data pin.  It is recommended
    // to provide an external pull-up resistor otherwise...
@@ -45,7 +57,7 @@ void temperature_dht_task(void *_args)
 
    while (1) {
       if (dht_read_data(SENSOR_TYPE, DHT_GPIO, &humidity, &temperature) == ESP_OK) {
-         ESP_LOGI(TAG, "Humidity: %f%% Temp: %f°C", humidity / 10.0, temperature / 10.0);
+         ESP_LOGI(TAG, "Humidity: %.0f%% Temp: %.1f°C", humidity / 10.0, temperature / 10.0);
          if(_dht_data.cb_t) {
             _dht_data.cb_t(temperature / 10.0, _dht_data.userdata_t);
          }
@@ -55,7 +67,7 @@ void temperature_dht_task(void *_args)
       }
       else {
       }
-      vTaskDelay(5000 / portTICK_PERIOD_MS);
+      vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
 
 }

@@ -9,6 +9,8 @@ struct mea_config_s {
    uint8_t wifi_configured_flag;
    char *wifi_ssid;
    char *wifi_password;
+
+   char *token;
 };
 
 struct mea_config_s *mea_config_init();
