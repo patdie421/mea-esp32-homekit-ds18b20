@@ -17,7 +17,7 @@
 #include "xpl_server.h"
 
 
-void xPLSendHbeat(int fd, char *source, char *type, int interval, char *version);
+void xpl_send_hbeat(int fd, char *source, char *type, int interval, char *version);
 
 #define PORT 3865
 
@@ -46,7 +46,7 @@ int8_t set_xpl_source(char *s)
 }
 
 
-int8_t xPLParser(const char *xplmsg, struct xpl_msg_s *pxpl_msg)
+int8_t xpl_parser(const char *xplmsg, struct xpl_msg_s *pxpl_msg)
 {
 #define XPL_IN_SECTION 0
 #define XPL_IN_NAME 1
@@ -128,7 +128,7 @@ int8_t xPLParser(const char *xplmsg, struct xpl_msg_s *pxpl_msg)
 }
 
 
-char *xPLpValue(const char *xpl_name, struct xpl_msg_s *pxpl_msg, unsigned int xpl_msg_index)
+char *xpl_value_p(const char *xpl_name, struct xpl_msg_s *pxpl_msg, unsigned int xpl_msg_index)
 {
    unsigned int c=0;
 
@@ -142,7 +142,7 @@ char *xPLpValue(const char *xpl_name, struct xpl_msg_s *pxpl_msg, unsigned int x
 }
 
 
-int8_t xPLMsgAsSection(char *section, struct xpl_msg_s *pxpl_msg, int8_t nb_values)
+int8_t xpl_msg_has_section_name(char *section, struct xpl_msg_s *pxpl_msg, int8_t nb_values)
 {
    for(int8_t i=0;i<nb_values;i++) {
       if(strcasecmp(section,pxpl_msg[i].name)==0) {
@@ -153,19 +153,19 @@ int8_t xPLMsgAsSection(char *section, struct xpl_msg_s *pxpl_msg, int8_t nb_valu
 }
 
 
-int8_t process_xpl_msg(int sock, struct xpl_msg_s *xpl_msg, int nb_values)
+int8_t xpl_process_msg(int sock, struct xpl_msg_s *xpl_msg, int nb_values)
 {
-   char *s = xPLpValue("target", pxpl_msg, nb_values);
+   char *s = xpl_value_p("target", pxpl_msg, nb_values);
 
    if(!s || (strcasecmp(s,"*")!=0 && strcasecmp(s,xpl_source)!=0) ) {
       return -1;
    } 
 
    if(strcasecmp(pxpl_msg[0].section,"XPL-CMND")==0) {
-      if(xPLMsgAsSection("HBEAT.REQUEST", pxpl_msg, nb_values)==0) {
-         s=xPLpValue("COMMAND", pxpl_msg, nb_values);
+      if(xpl_msg_has_section_name("HBEAT.REQUEST", pxpl_msg, nb_values)==0) {
+         s=xpl_value_p("COMMAND", pxpl_msg, nb_values);
          if(s && strcasecmp(s,"REQUEST")==0) { /* xpl-cmnd { hop=1 source=xpl-xxx target=* } hbeat.request { command=request } */
-            xPLSendHbeat(sock, xpl_source, "basic", xpl_interval, xpl_version); 
+            xpl_send_hbeat(sock, xpl_source, "basic", xpl_interval, xpl_version); 
             return 0;
          }
       }
@@ -174,7 +174,7 @@ int8_t process_xpl_msg(int sock, struct xpl_msg_s *xpl_msg, int nb_values)
 }
 
 
-int16_t xpl_server_send_message(int16_t fd, char *data, int l_data)
+int16_t xpl_send_msg(int16_t fd, char *data, int l_data)
 {
    struct sockaddr_in _send_addr;
    _send_addr.sin_family = AF_INET,
@@ -188,7 +188,7 @@ int16_t xpl_server_send_message(int16_t fd, char *data, int l_data)
 }
 
 
-int16_t xpl_server_read_message(int16_t fd, int32_t timeoutms, char *data, int l_data)
+int16_t xpl_read_msg(int16_t fd, int32_t timeoutms, char *data, int l_data)
 {
    fd_set input_set;
    struct timeval timeout = {0,0};
@@ -205,32 +205,32 @@ int16_t xpl_server_read_message(int16_t fd, int32_t timeoutms, char *data, int l
          ESP_LOGI(TAG, "Select error");
          ret=-1;
       }
-      goto on_error_xpl_read_message_exit;
+      goto on_error_xpl_read_msg_exit;
    }
    
    ret = (int)read(fd, data, l_data);
 //   ESP_LOGI(TAG, "read %d byte(s)", ret);
 
-on_error_xpl_read_message_exit:
+on_error_xpl_read_msg_exit:
    return ret;
 }
 
 
-void xPLSendHbeat(int fd, char *source, char *type, int interval, char *version)
+void xpl_send_hbeat(int fd, char *source, char *type, int interval, char *version)
 {
    char msg[256];
 
    char *hbeatMsg = "xpl-stat\n{\nhop=1\nsource=%s\ntarget=*\n}\nhbeat.%s\n{\ninterval=%d\nversion=%s\n}\n";
    sprintf(msg, hbeatMsg, source, type, interval, version);
    
-   xpl_server_send_message(fd, msg, strlen(msg));
+   xpl_send_msg(fd, msg, strlen(msg));
 }
 
 
 static void xplhb_timer_callback(void* arg)
 {
 //   ESP_LOGI(TAG, "HB");
-   xPLSendHbeat((int)arg, xpl_source, "basic", xpl_interval, xpl_version);
+   xpl_send_hbeat((int)arg, xpl_source, "basic", xpl_interval, xpl_version);
 }
 
 
@@ -272,17 +272,17 @@ static void xpl_server_task(void *pvParameters)
    ESP_ERROR_CHECK(esp_timer_create(&xplhb_timer_args, &xplhb_timer));
    ESP_ERROR_CHECK(esp_timer_start_periodic(xplhb_timer, xpl_interval * 1000000));
 
-   xPLSendHbeat(sock, xpl_source, "basic", xpl_interval, xpl_version);
+   xpl_send_hbeat(sock, xpl_source, "basic", xpl_interval, xpl_version);
 
    char data[1024];
    int xpl_msg_index = 0;
    while (1) {
-      int r=xpl_server_read_message(sock, 250, data, sizeof(data));
+      int r=xpl_read_msg(sock, 250, data, sizeof(data));
       if(r>0) {
          data[r]=0;
-         xpl_msg_index=xPLParser(data, pxpl_msg);
+         xpl_msg_index=xpl_parser(data, pxpl_msg);
          if(xpl_msg_index > 0) {
-            process_xpl_msg(sock, pxpl_msg, xpl_msg_index);
+            xpl_process_msg(sock, pxpl_msg, xpl_msg_index);
          }
       }
       else if(r==0) {

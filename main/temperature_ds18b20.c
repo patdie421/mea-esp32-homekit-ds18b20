@@ -68,17 +68,6 @@ void temperature_ds18b20_task(void *_args)
          // Do a number of temperature samples, and print the results.
          for (int i = 0; i < RESCAN_INTERVAL; i++) {
             ds18x20_measure_and_read_multi(SENSOR_GPIO, addrs, sensor_count, temps);
-/*
-            for (int j = 0; j < sensor_count; j++) {
-               uint32_t addr0 = addrs[j] >> 32;
-               uint32_t addr1 = addrs[j];
-               float temp_c = temps[j];
-               ESP_LOGI(TAG, "Sensor %08x%08x reports %f °C", addr0, addr1, temp_c);
-               if(_temperature_ds18b20_data.cb) {
-                  _temperature_ds18b20_data.cb(temp_c, _temperature_ds18b20_data.userdata);
-               }
-            }
-*/
             uint32_t addr0 = addrs[0] >> 32;
             uint32_t addr1 = addrs[0];
             float temp_c = temps[0];

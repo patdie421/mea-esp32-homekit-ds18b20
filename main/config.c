@@ -25,7 +25,7 @@ static struct mea_config_s mea_config = {
 };
 
 
-struct mea_config_s *get_mea_config()
+struct mea_config_s *config_get()
 {
    return &mea_config;
 }
@@ -51,7 +51,7 @@ char *generate_token_alloc()
 }
 
 
-char *generate_accessory_name_alloc()
+static char *generate_accessory_name_alloc()
 {
    uint8_t macaddr[6];
 
@@ -67,7 +67,7 @@ char *generate_accessory_name_alloc()
 }
 
 
-char *generate_accessory_password_alloc()
+static char *generate_accessory_password_alloc()
 {
    char *_accessory_password = malloc(11);
 
@@ -120,7 +120,7 @@ static int _set_mea_config_wifi(nvs_handle_t *my_handle, char *wifi_ssid, char *
 }
 
 
-int __set_mea_config_wifi(char *wifi_ssid, char *wifi_password, int flag)
+static int __set_mea_config_wifi(char *wifi_ssid, char *wifi_password, int flag)
 {
    nvs_handle_t my_handle;
 
@@ -138,19 +138,19 @@ int __set_mea_config_wifi(char *wifi_ssid, char *wifi_password, int flag)
 }
 
 
-inline int set_mea_config_wifi(char *wifi_ssid, char *wifi_password)
+inline int config_set_wifi(char *wifi_ssid, char *wifi_password)
 {
    return __set_mea_config_wifi(wifi_ssid, wifi_password, 1);
 }
 
 
-inline int reset_mea_config_wifi()
+inline int config_reset_wifi()
 {
    return __set_mea_config_wifi("", "", 0);
 }
 
 
-struct mea_config_s *mea_config_init()
+struct mea_config_s *config_init()
 {  
    nvs_handle_t my_handle;
 

@@ -17,9 +17,9 @@ struct relay_s {
    int8_t status;
 };
 
-void gpio_out_init(struct relay_s relays[], int nb_relays);
+void relays_init(struct relay_s relays[], int nb_relays);
 
-int relay_get(int r);
-void relay_set(int r, bool value);
+int  relays_get(int r);
+void relays_set(int r, bool value);
 
 #endif

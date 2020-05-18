@@ -20,7 +20,7 @@ int _nb_contacts = 0;
 struct contact_s *_contacts;
 
 
-int8_t contact_get(int8_t id)
+int8_t contacts_get(int8_t id)
 {
    if(id<_nb_contacts) {
       return _contacts[id].last_state;
@@ -31,7 +31,7 @@ int8_t contact_get(int8_t id)
 }
 
 
-void gpio_in_task(void* arg)
+void contacts_task(void* arg)
 {
    for(;;) {
       
@@ -54,7 +54,7 @@ void gpio_in_task(void* arg)
 }
 
 
-void gpio_in_init(struct contact_s my_contacts[], int nb_contacts) {
+void contacts_init(struct contact_s my_contacts[], int nb_contacts) {
    gpio_config_t io_conf;
 
    _contacts = my_contacts;
@@ -78,6 +78,6 @@ void gpio_in_init(struct contact_s my_contacts[], int nb_contacts) {
 
    gpio_config(&io_conf);
 
-   xTaskCreate(gpio_in_task, "gpio_in_task2", 2048, NULL, 10, NULL);
+   xTaskCreate(contacts_task, "contacts_task", 2048, NULL, 10, NULL);
 }
 

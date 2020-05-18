@@ -122,7 +122,7 @@ int8_t update_relay(uint8_t r)
 {
    if(r<NB_RELAYS) {
       homekit_characteristic_t *_c = (homekit_characteristic_t *)(my_relays[r].relay);
-      _c->value.bool_value=relay_get(r);
+      _c->value.bool_value=relays_get(r);
       homekit_characteristic_notify(_c, HOMEKIT_BOOL(_c->value.bool_value));
       return 0;
    }
@@ -135,7 +135,7 @@ homekit_value_t relay_state_getter(homekit_characteristic_t *c)
    for(int i=0;i<NB_RELAYS; i++) {
       homekit_characteristic_t *_c = (homekit_characteristic_t *)(my_relays[i].relay);
       if(_c->id == c->id) {
-         return HOMEKIT_BOOL(relay_get(i) == 0 ? 0 : 1);
+         return HOMEKIT_BOOL(relays_get(i) == 0 ? 0 : 1);
       }
    }
    return HOMEKIT_BOOL(0);
@@ -146,7 +146,7 @@ void relay_state_setter(homekit_characteristic_t *c, const homekit_value_t value
    for(int8_t i=0;i<NB_RELAYS; i++) {
       homekit_characteristic_t *_c = (homekit_characteristic_t *)(my_relays[i].relay);
       if(_c->id == c->id) {
-         relay_set(i,value.bool_value);
+         relays_set(i,value.bool_value);
          return;
       }
    }
@@ -182,7 +182,7 @@ homekit_server_config_t *init_accessory() {
    homekit_service_t* services[MAX_SERVICES + 1];
    homekit_service_t** s = services;
 
-   struct mea_config_s *mea_config = get_mea_config();
+   struct mea_config_s *mea_config = config_get();
 
    config.password = mea_config->accessory_password;
 
@@ -253,7 +253,7 @@ void sta_network_ready() {
 
    vTaskDelay(2000 / portTICK_PERIOD_MS);
 
-   gpio_in_init(my_contacts, NB_CONTACTS);
+   contacts_init(my_contacts, NB_CONTACTS);
 
    temperature_dht_init(update_temperature_dht_callback,(void *)&temperature_dht, update_humidity_dht_callback, (void *)&humidity_dht);
    temperature_dht_start();
@@ -281,7 +281,7 @@ struct contact_s startup_contact[1] = {
 int select_startup_mode()
 {
    int8_t startup_mode=0;
-   gpio_in_init(startup_contact, 1);
+   contacts_init(startup_contact, 1);
    while(startup_contact[0].last_state==-1) { // wait gpio_in_init done
       vTaskDelay(1);
    }
@@ -309,9 +309,9 @@ void app_main(void) {
    }
    ESP_ERROR_CHECK(ret);
 
-   gpio_out_init(my_relays, NB_RELAYS);
+   relays_init(my_relays, NB_RELAYS);
 
-   mea_config = mea_config_init();
+   mea_config = config_init();
    
    int8_t mode=network_init(mea_config,select_startup_mode());
    switch(mode) {

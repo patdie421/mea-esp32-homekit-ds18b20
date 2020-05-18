@@ -1,11 +1,3 @@
-/* BSD Socket API Example
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
 #include <string.h>
 #include <sys/param.h>
 #include "freertos/FreeRTOS.h"
@@ -94,7 +86,7 @@ static void do_request(const int sock)
                int id,v;
                n=sscanf(parameters, "%d%n/%d%n",&id,&r1,&v,&r2);
                if(n==2 && r2==strlen(parameters)) {
-                  relay_set(id, ((v == 0) ? 0 : 1));
+                  relays_set(id, ((v == 0) ? 0 : 1));
                   update_relay(id);
                   ESP_LOGI(TAG,"relay %d set to: %d",id,v);
                   send_data(sock,"OK");
@@ -102,7 +94,7 @@ static void do_request(const int sock)
                else if(n==1 && r1==strlen(parameters)) {
                   char str[2];
                   ESP_LOGI(TAG,"relay %d get",id);
-                  sprintf(str,"%d",relay_get(id));
+                  sprintf(str,"%d",relays_get(id));
                   send_data(sock,str);
                }
                else {
@@ -115,7 +107,7 @@ static void do_request(const int sock)
                n=sscanf(parameters, "%d%n",&id,&r); 
                if(n==1 && r==strlen(parameters)) {
                   ESP_LOGI(TAG,"input %d get",id);
-                  int8_t v=contact_get(id);
+                  int8_t v=contacts_get(id);
                   if(v<0) {
                      ESP_LOGI(TAG,"KO");
                      send_data(sock,"KO");
@@ -172,7 +164,7 @@ static void do_request(const int sock)
                char ssid[41], password[41];
                n=sscanf(parameters,"%40[^/]/%40s%n",ssid,password,&r);
                if(n==2 && r==strlen(parameters)) { 
-                  set_mea_config_wifi(ssid, password);
+                  config_set_wifi(ssid, password);
                   send_data(sock,"OK");
                   ESP_LOGI(TAG, "WIFI setting done");
                }
@@ -216,7 +208,7 @@ static void do_request(const int sock)
                }
                break;
             case 'C': // reset wifi configuration
-               reset_mea_config_wifi();
+               config_reset_wifi();
                send_data(sock,"OK");
                if(_mode == TCP_SERVER_RESTRICTED) {
                   vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -300,6 +292,6 @@ CLEAN_UP:
 void tcp_server_init(uint8_t mode)
 {
    _mode = mode;
-   _mea_config=get_mea_config();
+   _mea_config=config_get();
    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
 }

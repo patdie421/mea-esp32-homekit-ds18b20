@@ -41,7 +41,7 @@ static int8_t _relay_load_state(int8_t id)
 }
 
 
-int relay_get(int i)
+int relays_get(int i)
 {
    if(_relays && i<_nb_relays) {
       return _relays[i].state;
@@ -51,7 +51,7 @@ int relay_get(int i)
 }
 
 
-void relay_set(int i, bool v)
+void relays_set(int i, bool v)
 {
    if(_relays && i<_nb_relays) {
       gpio_set_level(_relays[i].gpio_pin, v ? RELAY_CLOSED : RELAY_OPENED);
@@ -61,7 +61,7 @@ void relay_set(int i, bool v)
 }
 
 
-void gpio_out_init(struct relay_s relays[], int nb_relays) {
+void relays_init(struct relay_s relays[], int nb_relays) {
    _relays = relays;
    _nb_relays = nb_relays;
 
@@ -72,7 +72,7 @@ void gpio_out_init(struct relay_s relays[], int nb_relays) {
     
    for(int i=0;i<_nb_relays;i++) {
       gpio_set_direction(relays[i].gpio_pin, GPIO_MODE_OUTPUT);
-      relay_set(i, _relay_load_state(i) ? 1 : 0);
+      relays_set(i, _relay_load_state(i) ? 1 : 0);
    }
 
    ESP_LOGI(TAG, "relays initialized");
