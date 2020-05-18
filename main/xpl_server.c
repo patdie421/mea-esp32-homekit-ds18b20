@@ -17,7 +17,7 @@
 #include "xpl_server.h"
 
 
-void mea_xPLSendHbeat(int fd, char *source, char *type, int interval, char *version);
+void xPLSendHbeat(int fd, char *source, char *type, int interval, char *version);
 
 #define PORT 3865
 
@@ -142,9 +142,9 @@ char *xPLpValue(const char *xpl_name, struct xpl_msg_s *pxpl_msg, unsigned int x
 }
 
 
-int8_t xPLMsgAsSection(char *section, struct xpl_msg_s *pxpl_msg, unsigned int xpl_msg_index)
+int8_t xPLMsgAsSection(char *section, struct xpl_msg_s *pxpl_msg, int8_t nb_values)
 {
-   for(int8_t i=0;i<xpl_msg_index;i++) {
+   for(int8_t i=0;i<nb_values;i++) {
       if(strcasecmp(section,pxpl_msg[i].name)==0) {
          return 0;
       }
@@ -165,7 +165,7 @@ int8_t process_xpl_msg(int sock, struct xpl_msg_s *xpl_msg, int nb_values)
       if(xPLMsgAsSection("HBEAT.REQUEST", pxpl_msg, nb_values)==0) {
          s=xPLpValue("COMMAND", pxpl_msg, nb_values);
          if(s && strcasecmp(s,"REQUEST")==0) { /* xpl-cmnd { hop=1 source=xpl-xxx target=* } hbeat.request { command=request } */
-            mea_xPLSendHbeat(sock, xpl_source, "basic", xpl_interval, xpl_version); 
+            xPLSendHbeat(sock, xpl_source, "basic", xpl_interval, xpl_version); 
             return 0;
          }
       }
@@ -216,9 +216,9 @@ on_error_xpl_read_message_exit:
 }
 
 
-void mea_xPLSendHbeat(int fd, char *source, char *type, int interval, char *version)
+void xPLSendHbeat(int fd, char *source, char *type, int interval, char *version)
 {
-   char msg[1024];
+   char msg[256];
 
    char *hbeatMsg = "xpl-stat\n{\nhop=1\nsource=%s\ntarget=*\n}\nhbeat.%s\n{\ninterval=%d\nversion=%s\n}\n";
    sprintf(msg, hbeatMsg, source, type, interval, version);
@@ -229,8 +229,8 @@ void mea_xPLSendHbeat(int fd, char *source, char *type, int interval, char *vers
 
 static void xplhb_timer_callback(void* arg)
 {
-   ESP_LOGI(TAG, "HB");
-   mea_xPLSendHbeat((int)arg, xpl_source, "basic", xpl_interval, xpl_version);
+//   ESP_LOGI(TAG, "HB");
+   xPLSendHbeat((int)arg, xpl_source, "basic", xpl_interval, xpl_version);
 }
 
 
@@ -241,31 +241,28 @@ static void xpl_server_task(void *pvParameters)
    int addr_family = AF_INET;
    esp_timer_handle_t xplhb_timer = 0;
 
+
    bzero(&dest_addr,sizeof(dest_addr));
    dest_addr.sin_family = AF_INET;
    dest_addr.sin_addr.s_addr = htonl(INADDR_ANY);
    dest_addr.sin_port = htons(PORT);
-
 
    int sock = socket(addr_family, SOCK_DGRAM, IPPROTO_IP);
    if (sock < 0) {
       ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
       goto CLEAN_UP;
    }
-   ESP_LOGI(TAG, "Socket created");
 
    if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &flag, (socklen_t)sizeof(flag)) < 0) {
-      ESP_LOGI(TAG, "unable to set SO_BROADCAST on socket (%d)\n", errno);
+      ESP_LOGI(TAG, "unable to set SO_BROADCAST on socket: errno %d\n", errno);
       goto CLEAN_UP;
    }
-   ESP_LOGI(TAG, "Socket is broadcast");
 
    int err = bind(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
    if (err < 0) {
-      ESP_LOGE(TAG, "Socket unable to bind (%d)", errno);
+      ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
       goto CLEAN_UP;
    }
-   ESP_LOGI(TAG, "Socket bound, port %d", PORT);
 
    const esp_timer_create_args_t xplhb_timer_args = {
       .callback = &xplhb_timer_callback,
@@ -275,7 +272,7 @@ static void xpl_server_task(void *pvParameters)
    ESP_ERROR_CHECK(esp_timer_create(&xplhb_timer_args, &xplhb_timer));
    ESP_ERROR_CHECK(esp_timer_start_periodic(xplhb_timer, xpl_interval * 1000000));
 
-   mea_xPLSendHbeat(sock, xpl_source, "basic", xpl_interval, xpl_version);
+   xPLSendHbeat(sock, xpl_source, "basic", xpl_interval, xpl_version);
 
    char data[1024];
    int xpl_msg_index = 0;
