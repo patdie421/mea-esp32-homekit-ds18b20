@@ -87,7 +87,6 @@ static void do_request(const int sock)
                n=sscanf(parameters, "%d%n/%d%n",&id,&r1,&v,&r2);
                if(n==2 && r2==strlen(parameters)) {
                   relays_set(id, ((v == 0) ? 0 : 1));
-//                  update_relay(id);
                   ESP_LOGI(TAG,"relay %d set to: %d",id,v);
                   send_data(sock,"OK");
                }
