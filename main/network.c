@@ -19,7 +19,7 @@
  * WIFI STA MODE
  *
  */
-#define WIFI_ESP_MAXIMUM_RETRY 5
+#define WIFI_ESP_MAXIMUM_RETRY 10
 
 static const char *TAG_STA = "wifi station";
 
