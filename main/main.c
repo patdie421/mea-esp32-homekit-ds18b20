@@ -38,7 +38,7 @@ static struct mea_config_s *mea_config = NULL;
 /*
  * Contacts data and callbacks
  */
-void update_contact_callback(uint8_t v, void *data);
+void update_contact_callback(int8_t v, int8_t prev, int8_t id, void *data);
 
 #define NB_CONTACTS 4
 
@@ -50,12 +50,17 @@ struct contact_s my_contacts[NB_CONTACTS] = {
 };
 
 
-void update_contact_callback(uint8_t v, void *data)
+void update_contact_callback(int8_t v, int8_t prev, int8_t id, void *data)
 {
    homekit_characteristic_t *c=(homekit_characteristic_t *)data;
    c->value.uint8_value = (uint8_t)v;
 
-   homekit_characteristic_notify(c, HOMEKIT_UINT8(v));
+   if(v!=prev) {
+      char device[3]="iX";
+      device[1]='0'+id;
+      xpl_send_current_hl("trig", device, v);
+      homekit_characteristic_notify(c, HOMEKIT_UINT8(v));
+   }
 }
 
 
@@ -76,48 +81,72 @@ homekit_value_t contact_state_getter(homekit_characteristic_t *c) {
 /*
  * dht temperature/humidity data and callbacks
  */
-void update_temperature_dht_callback(float t, void *data)
+void update_temperature_dht_callback(float t, float prev_t, void *data)
 {
    homekit_characteristic_t *c = (homekit_characteristic_t *)data;
    c->value.float_value = t;
 
-   homekit_characteristic_notify(c, HOMEKIT_FLOAT(t));
+   if(t!=prev_t) {
+      homekit_characteristic_notify(c, HOMEKIT_FLOAT(t));
+      xpl_send_current_float("trig", "t0", t);
+   }
 }
 
 
-void update_humidity_dht_callback(float h, void *data)
+void update_humidity_dht_callback(float h, float prev_h, void *data)
 {
    homekit_characteristic_t *c = (homekit_characteristic_t *)data;
    c->value.float_value = h;
 
-   homekit_characteristic_notify(c, HOMEKIT_FLOAT(h));
+   if(h!=prev_h) {
+      homekit_characteristic_notify(c, HOMEKIT_FLOAT(h));
+      xpl_send_current_float("trig", "h0", h);
+   }
 }
 
 
 /*
  * temperature data and callbacks
  */
-void update_temperature_callback(float t, void *data)
+void update_temperature_callback(float t, float l, void *data)
 {
    homekit_characteristic_t *c = (homekit_characteristic_t *)data;
    c->value.float_value = t;
 
-   homekit_characteristic_notify(c, HOMEKIT_FLOAT(t));
+   if(t != l) {
+      homekit_characteristic_notify(c, HOMEKIT_FLOAT(t));
+      xpl_send_current_float("trig", "t1", t);
+   }
 }
 
 
 /*
  * relay data and callbacks
  */
+void update_relay_callback(int8_t v, int8_t prev, int8_t id, void *data);
 #define NB_RELAYS 4
 struct relay_s my_relays[NB_RELAYS] = {
-   { .gpio_pin=4,  .name="Relay 1", .status=1 },
-   { .gpio_pin=21, .name="Relay 2", .status=1 },
-   { .gpio_pin=22, .name="Relay 3", .status=1 },
-   { .gpio_pin=25, .name="Relay 4", .status=1 }
+   { .gpio_pin=4,  .name="Relay 1", .callback=update_relay_callback, .status=1 },
+   { .gpio_pin=21, .name="Relay 2", .callback=update_relay_callback, .status=1 },
+   { .gpio_pin=22, .name="Relay 3", .callback=update_relay_callback, .status=1 },
+   { .gpio_pin=25, .name="Relay 4", .callback=update_relay_callback, .status=1 }
 };
 
 
+void update_relay_callback(int8_t v, int8_t prev, int8_t id, void *data)
+{
+   homekit_characteristic_t *_c = (homekit_characteristic_t *)data;
+   _c->value.bool_value=v;
+
+   if(v!=prev) {
+      char device[3]="oX";
+      device[1]='0'+id;
+      homekit_characteristic_notify(_c, HOMEKIT_BOOL(_c->value.bool_value));
+      xpl_send_current_hl("trig", device, v);
+   }
+}
+
+/*
 int8_t update_relay(uint8_t r)
 {
    if(r<NB_RELAYS) {
@@ -128,7 +157,7 @@ int8_t update_relay(uint8_t r)
    }
    return -1;
 }
-
+*/
 
 homekit_value_t relay_state_getter(homekit_characteristic_t *c)
 {
@@ -262,7 +291,7 @@ void sta_network_ready() {
    temperature_ds18b20_start();
 
    tcp_server_init(TCP_SERVER_RESTRICTED);
-   xpl_server_init("mea-test.home");
+   xpl_server_init(mea_config->xpl_addr);
 }
 
 

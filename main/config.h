@@ -11,6 +11,11 @@ struct mea_config_s {
    char *wifi_password;
 
    char *token;
+
+   char *xpl_deviceid;
+   char *xpl_vendorid;
+   char *xpl_instanceid;
+   char *xpl_addr;
 };
 
 struct mea_config_s *config_init();

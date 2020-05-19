@@ -12,4 +12,7 @@ typedef struct xpl_msg_s {
 
 void xpl_server_init(char *source);
 
+void xpl_send_current_float(char *msg_type, char *device, float value);
+void xpl_send_current_hl(char *msg_type, char *device, int8_t value);
+
 #endif

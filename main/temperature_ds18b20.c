@@ -15,7 +15,8 @@ static char *TAG = "ds18x20";
 struct temperature_ds18b20_data {
    temperature_ds18b20_callback_t cb;
    void *userdata;
-} _temperature_ds18b20_data = { .cb=NULL, .userdata=NULL };
+   float last;
+} _temperature_ds18b20_data = { .cb=NULL, .userdata=NULL, .last=-9999.0 };
 
 
 #define MAX_SENSORS 8
@@ -73,8 +74,9 @@ void temperature_ds18b20_task(void *_args)
             float temp_c = temps[0];
             ESP_LOGI(TAG, "Sensor %08x%08x reports %.1f deg C", addr0, addr1, temp_c);
             if(_temperature_ds18b20_data.cb) {
-               _temperature_ds18b20_data.cb(temp_c, _temperature_ds18b20_data.userdata);
+               _temperature_ds18b20_data.cb(temp_c, _temperature_ds18b20_data.last, _temperature_ds18b20_data.userdata);
             }
+            _temperature_ds18b20_data.last=temp_c;
 
             vTaskDelay(LOOP_DELAY_MS / portTICK_PERIOD_MS);
          }
@@ -85,5 +87,5 @@ void temperature_ds18b20_task(void *_args)
 
 void temperature_ds18b20_start()
 {
-   xTaskCreate(temperature_ds18b20_task, "ds18b20", 2048, &_temperature_ds18b20_data, 2, NULL);
+   xTaskCreate(temperature_ds18b20_task, "ds18b20", 2560, &_temperature_ds18b20_data, 2, NULL);
 }

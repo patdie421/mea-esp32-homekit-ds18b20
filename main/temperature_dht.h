@@ -1,8 +1,8 @@
 #ifndef __temperature_dht_h
 #define __temperature_dht_h
 
-typedef void (*temperature_dht_callback_t)(float temperature, void *userdata);
-typedef void (*humidity_dht_callback_t)(float humidity, void *userdata);
+typedef void (*temperature_dht_callback_t)(float temperature, float prev, void *userdata);
+typedef void (*humidity_dht_callback_t)(float humidity, float prev, void *userdata);
 
 float temperature_dht_get_h();
 float temperature_dht_get_t();

@@ -45,7 +45,7 @@ void contacts_task(void* arg)
          if(v!=_contacts[i].last_state) {
             ESP_LOGI(TAG, "GPIO[%d] intr, val: %d", i, v);
             if(_contacts[i].callback) {
-               _contacts[i].callback(v, _contacts[i].contact);
+               _contacts[i].callback(v, _contacts[i].last_state, i, _contacts[i].contact);
             }
             _contacts[i].last_state = v;
          }
@@ -78,6 +78,6 @@ void contacts_init(struct contact_s my_contacts[], int nb_contacts) {
 
    gpio_config(&io_conf);
 
-   xTaskCreate(contacts_task, "contacts_task", 2048, NULL, 10, NULL);
+   xTaskCreate(contacts_task, "contacts_task", 2560, NULL, 10, NULL);
 }
 
