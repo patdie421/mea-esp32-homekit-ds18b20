@@ -39,7 +39,7 @@ struct mea_config_s *config_get()
 
 
 #define TOKENSIZE 20
-char *generate_token_alloc(void *data)
+static char *generate_token_alloc(void *data)
 {
    char *t = malloc(TOKENSIZE+1);
    for(int i=0;i<TOKENSIZE;i++) {
