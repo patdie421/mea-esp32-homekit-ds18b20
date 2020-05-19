@@ -136,8 +136,6 @@ int wifi_init_sta(char *wifi_ssid, char *wifi_password)
  */
 char *TAG_AP = "wifi AP";
 
-#define ESP_WIFI_SSID      "esp32"
-#define ESP_WIFI_PASS      "password"
 #define ESP_WIFI_CHANNEL   (11)
 #define MAX_STA_CONN       (5)
 
