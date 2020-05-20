@@ -15,7 +15,6 @@ struct contact_s {
 };
 
 void contacts_init(struct contact_s contacts[], int nb_contacts);
-
 int8_t contacts_get(int8_t id);
 
 #endif

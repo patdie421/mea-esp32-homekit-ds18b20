@@ -6,7 +6,6 @@
 #include "ds18b20_add.h"
 
 #define ds18x20_WRITE_SCRATCHPAD 0x4E
-
 #define DS18B20_FAMILY_ID 0x28
 
 esp_err_t ds18b20_set_resolution(gpio_num_t pin, ds18x20_addr_t addr, uint8_t resolution)

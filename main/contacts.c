@@ -16,8 +16,8 @@
 
 static char *TAG = "contacts";
 
-int _nb_contacts = 0;
-struct contact_s *_contacts;
+static int _nb_contacts = 0;
+static struct contact_s *_contacts;
 
 
 int8_t contacts_get(int8_t id)
@@ -31,10 +31,9 @@ int8_t contacts_get(int8_t id)
 }
 
 
-void contacts_task(void* arg)
+static void contacts_task(void* arg)
 {
    for(;;) {
-      
       for(int i=0;i<_nb_contacts;i++) {
          int v=0;
          for(int j=0;j<24;j++) {

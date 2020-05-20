@@ -12,12 +12,6 @@
 #include <homekit/homekit.h>
 #include <homekit/characteristics.h>
 
-//#include <owb.h>
-//#include <owb_gpio.h>
-//#include <ds18b20.h>
-
-#include "wifi.h"
-
 #include "network.h"
 #include "config.h"
 #include "status_led.h"

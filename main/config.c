@@ -39,7 +39,7 @@ struct mea_config_s *config_get()
 
 
 #define TOKENSIZE 20
-char *generate_token_alloc(void *data)
+static char *generate_token_alloc(void *data)
 {
    char *t = malloc(TOKENSIZE+1);
    for(int i=0;i<TOKENSIZE;i++) {
@@ -108,7 +108,7 @@ static char *generate_accessory_password_alloc(void *data)
 
 
 
-int set_item_str_value(nvs_handle_t *my_handle, char *item, char **variable, char *value)
+static int set_item_str_value(nvs_handle_t *my_handle, char *item, char **variable, char *value)
 {
    if(*variable) {
       free(*variable);
@@ -120,10 +120,10 @@ int set_item_str_value(nvs_handle_t *my_handle, char *item, char **variable, cha
 }
 
 
-int retrieve_item_str_value(nvs_handle_t *my_handle, char *item, char **variable, generate_value_t generate_value, void *userdata)
+static int retrieve_item_str_value(nvs_handle_t *my_handle, char *item, char **variable, generate_value_t generate_value, void *userdata)
 {
    size_t required_size = 0;
-
+´
    if(*variable) {
       free(*variable);
       *variable=NULL;
