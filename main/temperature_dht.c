@@ -79,5 +79,5 @@ void temperature_dht_task(void *_args)
 
 void temperature_dht_start()
 {
-   xTaskCreate(temperature_dht_task, "dht", 8192, &_dht_data, 2, NULL);
+   xTaskCreate(temperature_dht_task, "dht", 2560, &_dht_data, 2, NULL);
 }
