@@ -162,7 +162,7 @@ int wifi_init_sta(char *wifi_ssid, char *wifi_password)
       return 1;
    }
    else if (bits & WIFI_FAIL_BIT) {
-      ESP_LOGI(TAG_STA, "Failed to connect to SSID:%s", wifi_password);
+      ESP_LOGI(TAG_STA, "Failed to connect to SSID:%s", wifi_ssid);
       return 0;
    }
    else {
