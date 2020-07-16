@@ -53,6 +53,11 @@ void temperature_ds18b20_task(void *_args)
       // to our bus have changed.
       sensor_count = ds18x20_scan_devices(SENSOR_GPIO, addrs, MAX_SENSORS);
 
+      if(sensor_count <= 0) {
+         vTaskDelay(LOOP_DELAY_MS*5 / portTICK_PERIOD_MS);
+         continue;
+      }
+
       ds18b20_set_resolution(SENSOR_GPIO, ds18x20_ANY, DS18B20_RESOLUTION_12_BIT);
 
       if (sensor_count < 1) {

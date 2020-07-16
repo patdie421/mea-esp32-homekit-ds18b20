@@ -15,6 +15,8 @@
 #include <lwip/netdb.h>
 
 #include "tcp_server.h"
+#include "tcp_process.h"
+
 #include "config.h"
 #include "contacts.h"
 #include "relays.h"
@@ -22,15 +24,19 @@
 #include "temperature_ds18b20.h"
 
 
-// int8_t update_relay(uint8_t r);
-
 #define PORT 8081
 
 static const char *TAG = "tcp_server";
 static int8_t _mode = 0;
 struct mea_config_s *_mea_config = NULL; 
+TaskHandle_t tcpServer_taskHandle = NULL;
+int listen_sock = -1;
 
-void send_data(const int sock, char *data)
+static tcp_process_callback_t __callback = NULL;
+static void *__userdata = NULL;
+
+
+void tcp_send_data(const int sock, char *data)
 {
    int len = strlen(data);
    int to_write = len;
@@ -45,7 +51,7 @@ void send_data(const int sock, char *data)
 }
 
 
-static void do_request(const int sock)
+static void _do_request(const int sock)
 {
    int len;
    char rx_buffer[128];
@@ -63,174 +69,38 @@ static void do_request(const int sock)
       int r1=0,r2=0;
 
       rx_buffer[len]=0;
-
-      int l=strlen(rx_buffer);
+//      int l=strlen(rx_buffer);
       int n=sscanf(rx_buffer,"%20[^:]:%c%n:%80s%n",token,&cmd,&r1,parameters,&r2);
       if(n<2 || n>3) {
          ESP_LOGE(TAG,"Data error");
-         send_data(sock,"???");
+         tcp_send_data(sock,"???");
          return;
       }
 
       if(_mode==TCP_SERVER_RESTRICTED) {
          if(strcmp(token,_mea_config->token)!=0) {
             ESP_LOGE(TAG,"Not authorized");
-            send_data(sock,"BC"); // bad credencial
+            tcp_send_data(sock,"BC"); // bad credencial
             return;
          }
       }
-
-      if(n==3 && r2==l) {
-         switch(cmd) {
-            case 'O': {
-               int id,v;
-               n=sscanf(parameters, "%d%n/%d%n",&id,&r1,&v,&r2);
-               if(n==2 && r2==strlen(parameters)) {
-                  relays_set(id, ((v == 0) ? 0 : 1));
-                  ESP_LOGI(TAG,"relay %d set to: %d",id,v);
-                  send_data(sock,"OK");
-               }
-               else if(n==1 && r1==strlen(parameters)) {
-                  char str[2];
-                  ESP_LOGI(TAG,"relay %d get",id);
-                  sprintf(str,"%d",relays_get(id));
-                  send_data(sock,str);
-               }
-               else {
-                  send_data(sock,"???");
-               } 
-               break;
-            };
-            case 'I': {
-               int id,r;
-               n=sscanf(parameters, "%d%n",&id,&r); 
-               if(n==1 && r==strlen(parameters)) {
-                  ESP_LOGI(TAG,"input %d get",id);
-                  int8_t v=contacts_get(id);
-                  if(v<0) {
-                     ESP_LOGI(TAG,"KO");
-                     send_data(sock,"KO");
-                  }
-                  else {
-                     char s[2]="";
-                     s[0] = '0' + ((v == 0) ? 0 : 1);
-                     s[1] = 0;
-                     send_data(sock,s);
-                  }
-               }
-               else {
-                  send_data(sock,"???");
-               } 
-               break;
-            };
-            case 'H': {
-               int id,r,h;
-               n=sscanf(parameters, "%d%n",&id,&r); 
-               if(n==1 && r==strlen(parameters) && id==0) {
-                  char str[5];
-                  ESP_LOGI(TAG,"humidity %d get",id);
-                  h=(int)temperature_dht_get_h();
-                  sprintf(str,"%d",h);
-                  send_data(sock,str);
-               }
-               else {
-                  send_data(sock,"???");
-               }
-               break;
-            }
-            case 'T': {
-               int id,r;
-               char str[10];
-               n=sscanf(parameters, "%d%n",&id,&r); 
-               if(n==1 && r==strlen(parameters) && (id==0 || id==1)) {
-                  ESP_LOGI(TAG,"temperature %d get",id);
-                  if(id==0) {
-                     sprintf(str,"%d",(int)temperature_dht_get_t());
-                  }
-                  else {
-                     sprintf(str,"%.1f",temperature_ds18b20_get());
-                  }
-                  send_data(sock,str);
-               }
-               else {
-                  send_data(sock,"???");
-               }
-               break;
-            }
-            case 'W': {
-               ESP_LOGI(TAG, "WIFI setting ...");
-               int r=0;
-               char ssid[41], password[41];
-               n=sscanf(parameters,"%40[^/]/%40s%n",ssid,password,&r);
-               if(n==2 && r==strlen(parameters)) { 
-                  config_set_wifi(ssid, password);
-                  send_data(sock,"OK");
-                  ESP_LOGI(TAG, "WIFI setting done");
-               }
-               else {
-                  send_data(sock,"KO");
-                  ESP_LOGI(TAG, "WIFI setting KO");
-               }
-               break;
-            };
-            default:
-               send_data(sock,"???");
-               ESP_LOGW(TAG, "bad command");
-               break;
       
+      if(n==3 && r2==len) {
+         if(__callback) {
+            __callback(sock, _mea_config, _mode, cmd, parameters, __userdata);
          }
       }
-      else if(n==2 && r1==l) {
-         switch(cmd) {
-            case 'w':
-               {
-                  char s[81]="";
-
-                  sprintf(s,"WIFI_SSID=%s\n",_mea_config->wifi_ssid);
-                  send_data(sock,s);
-                  sprintf(s,"HOMEKIT_NAME=%s\n",_mea_config->accessory_name);
-                  send_data(sock,s);
-                  sprintf(s,"HOMEKIT_PASSWORD=%s\n",_mea_config->accessory_password);
-                  send_data(sock,s);
-               }
-               break;
-            case 't': // get token
-               {
-                  char s[81]="";
-                  if(_mode==TCP_SERVER_CONFIG) {
-                     sprintf(s,"TOKEN=%s\n",_mea_config->token);
-                     send_data(sock,s);
-                  }
-                  else {
-                     send_data(sock,"NA");
-                  }
-               }
-               break;
-            case 'C': // reset wifi configuration
-               config_reset_wifi();
-               send_data(sock,"OK");
-               if(_mode == TCP_SERVER_RESTRICTED) {
-                  vTaskDelay(1000 / portTICK_PERIOD_MS);
-                  esp_restart();
-               }
-               break;
-            case 'R': // restart (reboot)
-               ESP_LOGW(TAG, "Restart...");
-               send_data(sock,"OK");
-               ESP_LOGW(TAG, "Restart OK");
-               vTaskDelay(1000 / portTICK_PERIOD_MS);
-               esp_restart();
-               break;
-            default:
-               send_data(sock,"???");
-               ESP_LOGW(TAG, "bad command");
-               break;
+      else if(n==2 && r1==len) {
+         if(__callback) {
+            __callback(sock, _mea_config, _mode, cmd, NULL, __userdata);
          }
       }
       else {
-         send_data(sock,"!!!");
+         tcp_send_data(sock,"!!!");
          ESP_LOGW(TAG, "bad request");
+         return;
       }
+      return; 
    }
 }
 
@@ -246,7 +116,7 @@ static void tcp_server_task(void *pvParameters)
    dest_addr_ip4->sin_port = htons(PORT);
    ip_protocol = IPPROTO_IP;
 
-   int listen_sock = socket(AF_INET, SOCK_STREAM, ip_protocol);
+   listen_sock = socket(AF_INET, SOCK_STREAM, ip_protocol);
    if (listen_sock < 0) {
       ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
       vTaskDelete(NULL);
@@ -276,7 +146,7 @@ static void tcp_server_task(void *pvParameters)
          break;
       }
 
-      do_request(sock);
+      _do_request(sock);
 
       shutdown(sock, 0);
       close(sock);
@@ -288,9 +158,29 @@ CLEAN_UP:
 }
 
 
-void tcp_server_init(uint8_t mode)
+void tcp_server_restart()
 {
+   if(tcpServer_taskHandle) {
+      ESP_LOGI(TAG, "Restarting");
+      vTaskDelete(tcpServer_taskHandle);
+      tcpServer_taskHandle=NULL;
+      if(listen_sock>=0) {
+         close(listen_sock);
+         listen_sock = -1;
+      }
+   }
+   else {
+      ESP_LOGI(TAG, "Starting");
+   }
+   xTaskCreate(tcp_server_task, "tcp_server", 4096, (void*)AF_INET, 5, &tcpServer_taskHandle);
+}
+
+//void tcp_server_init(uint8_t mode)
+void tcp_server_init(uint8_t mode, tcp_process_callback_t _callback, void *_userdata)
+{
+    __callback = _callback;
+    __userdata = _userdata;
    _mode = mode;
    _mea_config=config_get();
-   xTaskCreate(tcp_server_task, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
+   tcp_server_restart();
 }

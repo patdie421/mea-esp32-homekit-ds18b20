@@ -6,3 +6,4 @@ void status_led_set_interval(uint16_t interval);
 uint16_t status_led_get_interval();
 
 #endif
+

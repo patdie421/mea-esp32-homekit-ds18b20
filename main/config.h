@@ -18,9 +18,10 @@ struct mea_config_s {
    char *xpl_addr;
 };
 
-struct mea_config_s *config_init();
+struct mea_config_s *config_init(char *ext);
 struct mea_config_s *config_get();
 int config_set_wifi(char *wifi_ssid, char *wifi_password);
 int config_reset_wifi();
 
 #endif
+

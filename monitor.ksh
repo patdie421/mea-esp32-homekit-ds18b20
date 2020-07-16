@@ -1,0 +1,1 @@
+python /Users/patrice/esp/esp-idf/tools/idf_monitor.py --baud 115200 --port "/dev/cu.usbserial-0001" --toolchain-prefix "xtensa-esp32-elf-" --make "/Applications/Xcode.app/Contents/Developer/usr/bin/make" --print_filter ""  /Users/patrice/esp/mea-esp32-homekit-ds18b20/build/mea-temp.elf

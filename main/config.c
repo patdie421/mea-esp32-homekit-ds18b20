@@ -18,6 +18,7 @@ typedef char * (*generate_value_t)(void *userdata);
 
 // config
 char *nvs_namespace = "meaconfig";
+
 static struct mea_config_s mea_config = {
    .accessory_password = NULL,
    .accessory_name = NULL,
@@ -123,7 +124,7 @@ static int set_item_str_value(nvs_handle_t *my_handle, char *item, char **variab
 static int retrieve_item_str_value(nvs_handle_t *my_handle, char *item, char **variable, generate_value_t generate_value, void *userdata)
 {
    size_t required_size = 0;
-´
+
    if(*variable) {
       free(*variable);
       *variable=NULL;
@@ -192,7 +193,7 @@ inline int config_reset_wifi()
 }
 
 
-struct mea_config_s *config_init()
+struct mea_config_s *config_init(char *ext)
 {  
    nvs_handle_t my_handle;
 
@@ -203,13 +204,12 @@ struct mea_config_s *config_init()
       return NULL;
    }
 
-   retrieve_item_str_value(&my_handle, "xpl_deviceid", &(mea_config.xpl_deviceid), generate_xpl_device_id_alloc, "io");
+   retrieve_item_str_value(&my_handle, "xpl_deviceid", &(mea_config.xpl_deviceid), generate_xpl_device_id_alloc, ext);
    retrieve_item_str_value(&my_handle, "xpl_instanceid", &(mea_config.xpl_instanceid), NULL, "edomus");
    snprintf(xpl_addr, sizeof(xpl_addr)-1, "%s-%s.%s", mea_config.xpl_vendorid, mea_config.xpl_deviceid, mea_config.xpl_instanceid);
    retrieve_item_str_value(&my_handle, "accessory_name", &(mea_config.accessory_name), generate_accessory_name_alloc, NULL);
    retrieve_item_str_value(&my_handle, "accessory_pass", &(mea_config.accessory_password), generate_accessory_password_alloc, NULL);
    retrieve_item_str_value(&my_handle, "token", &(mea_config.token), generate_token_alloc, NULL);
-
 
    ret = nvs_get_u8(my_handle, "wifi_flag", &(mea_config.wifi_configured_flag));
    if(ret == ESP_ERR_NVS_NOT_FOUND) {
@@ -220,7 +220,6 @@ struct mea_config_s *config_init()
       retrieve_item_str_value(&my_handle, "wifi_ssid", &(mea_config.wifi_ssid), NULL, "");
       retrieve_item_str_value(&my_handle, "wifi_pass", &(mea_config.wifi_password), NULL, "");
    }
-
 
    ESP_LOGI(TAG, "WIFI_SSID=%s", mea_config.wifi_ssid);
 //   ESP_LOGI(TAG, "WIFI_PASSWORD=%s", mea_config.wifi_password);
@@ -234,7 +233,6 @@ struct mea_config_s *config_init()
 
    ret = nvs_commit(my_handle);
    nvs_close(my_handle);
-
 
    return &mea_config;
 }

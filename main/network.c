@@ -12,7 +12,11 @@
 #include "lwip/sys.h"
 
 #include "config.h"
+#include "network.h"
 
+#include "status_led.h"
+#include "tcp_server.h"
+#include "xpl_server.h"
 
 /*
  *
@@ -35,8 +39,39 @@ static EventGroupHandle_t s_wifi_event_group;
 
 static int s_retry_num = 0;
 
+esp_event_handler_instance_t instance_any_id;
 
-static void event_handler_sta(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
+restart_callback_t _restart = NULL;
+void *_userdata = NULL;
+
+static void event_handler_sta_autoreco(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
+{
+   if(event_base == WIFI_EVENT) {
+      switch(event_id) {
+         case WIFI_EVENT_STA_DISCONNECTED:
+            status_led_set_interval(125);
+            esp_wifi_connect();
+            ESP_LOGI(TAG_STA, "retry to connect to the AP");
+            break;
+         case WIFI_EVENT_STA_CONNECTED:
+            status_led_set_interval(1000);
+            ESP_LOGI(TAG_STA, "reconnection to the AP done");
+            break;
+      }
+   }
+   else if(event_base == IP_EVENT) {
+      switch(event_id) {
+         case IP_EVENT_STA_GOT_IP:
+            if(_restart) {
+               _restart(_userdata);
+            }
+            break;
+      }
+   }
+}
+
+
+static void event_handler_sta_init(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
       esp_wifi_connect();
@@ -63,6 +98,14 @@ static void event_handler_sta(void* arg, esp_event_base_t event_base, int32_t ev
 
 int wifi_init_sta(char *wifi_ssid, char *wifi_password)
 {
+   wifi_config_t wifi_config = {
+      .sta = {
+         .ssid = "",
+         .password = ""
+      }
+   };
+   strcpy((char *)wifi_config.sta.ssid, wifi_ssid);
+   strcpy((char *)wifi_config.sta.password, wifi_password);
    s_wifi_event_group = xEventGroupCreate();
 
    ESP_ERROR_CHECK(esp_netif_init());
@@ -73,31 +116,21 @@ int wifi_init_sta(char *wifi_ssid, char *wifi_password)
    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-   esp_event_handler_instance_t instance_any_id;
    esp_event_handler_instance_t instance_got_ip;
    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                                       ESP_EVENT_ANY_ID,
-                                                       &event_handler_sta,
-                                                       NULL,
-                                                       &instance_any_id));
+      ESP_EVENT_ANY_ID,
+      &event_handler_sta_init,
+      NULL,
+      &instance_any_id));
    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                                                       IP_EVENT_STA_GOT_IP,
-                                                       &event_handler_sta,
-                                                       NULL,
-                                                       &instance_got_ip));
+      IP_EVENT_STA_GOT_IP,
+      &event_handler_sta_init,
+      NULL,
+      &instance_got_ip));
 
-   wifi_config_t wifi_config = {
-      .sta = {
-         .ssid = "",
-         .password = ""
-      },
-   };
-   strcpy((char *)wifi_config.sta.ssid, wifi_ssid);
-   strcpy((char *)wifi_config.sta.password, wifi_password);
-
-   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
-   ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
-   ESP_ERROR_CHECK(esp_wifi_start() );
+   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+   ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+   ESP_ERROR_CHECK(esp_wifi_start());
 
    ESP_LOGI(TAG_STA, "wifi_init_sta finished.");
 
@@ -116,6 +149,16 @@ int wifi_init_sta(char *wifi_ssid, char *wifi_password)
 
    if (bits & WIFI_CONNECTED_BIT) {
       ESP_LOGI(TAG_STA, "connected to ap SSID:%s", wifi_ssid);
+      ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
+         ESP_EVENT_ANY_ID,
+         &event_handler_sta_autoreco,
+         NULL,
+         &instance_any_id));
+      ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
+         IP_EVENT_STA_GOT_IP,
+         &event_handler_sta_autoreco,
+         NULL,
+         &instance_got_ip));
       return 1;
    }
    else if (bits & WIFI_FAIL_BIT) {
@@ -187,10 +230,13 @@ int wifi_init_softap(char *ssid, char *password)
 }
 
 
-int8_t network_init(struct mea_config_s *mea_config, int8_t ap_mode)
+int8_t network_init(struct mea_config_s *mea_config, int8_t ap_mode, restart_callback_t __restart, void *__userdata)
 {
    int8_t ret=0;
    int8_t mode=0;
+
+   _restart = __restart;
+   _userdata = __userdata;
 
    if(mea_config->wifi_configured_flag==0 || ap_mode == 1) {
      mode=2;

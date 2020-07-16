@@ -8,10 +8,10 @@
 
 #include "temperature_dht.h"
 
-#define SENSOR_TYPE DHT_TYPE_DHT11
+#define SENSOR_TYPE DHT_TYPE_AM2301
 #define DHT_GPIO 26
 
-static char *TAG = "dht11";
+static char *TAG = "dht";
 
 static int16_t temperature = 0;
 static int16_t humidity = 0;

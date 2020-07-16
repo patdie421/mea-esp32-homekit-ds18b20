@@ -1,7 +1,8 @@
 import socket
+import sys
 
-HOST = '192.168.0.45'
-#HOST = '192.168.4.1'
+# HOST = '192.168.0.45'
+HOST = '192.168.4.1'
 # HOST ="led-33066C-22.local"
 PORT = 8081
 
@@ -29,8 +30,11 @@ def do_request(host, port, command):
    return donnees
 
    
-#message = TOKEN+':W:france2/wificdpii1000'
-#message = TOKEN+':R'
+message = TOKEN+':W:france2/wificdpii1000'
+do_request(HOST,PORT,message) 
+message = TOKEN+':R'
+do_request(HOST,PORT,message) 
+sys.exit(0)
 
 message = TOKEN+':O:3'
 s=do_request(HOST,PORT,message) 
