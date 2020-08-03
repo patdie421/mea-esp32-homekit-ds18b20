@@ -186,7 +186,7 @@ void tcp_server_restart()
    else {
       ESP_LOGI(TAG, "Starting");
    }
-   xTaskCreate(tcp_server_task, "tcp_server", 4096, (void*)AF_INET, 5, &tcpServer_taskHandle);
+   xTaskCreate(tcp_server_task, "tcp_server", 4096, NULL, 5, &tcpServer_taskHandle);
 }
 
 
