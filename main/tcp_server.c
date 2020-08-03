@@ -23,12 +23,6 @@
 #include "temperature_dht.h"
 #include "temperature_ds18b20.h"
 
-#define OK_STATUS "OK"
-#define KO_STATUS "KO"
-#define BAD_COMMAND_STATUS "???"
-#define BAD_REQUEST_STATUS "!!!"
-#define BAD_CREDENCIAL "###"
-
 #define PORT 8081
 
 static const char *TAG = "tcp_server";
