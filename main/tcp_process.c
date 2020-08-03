@@ -110,6 +110,15 @@ int tcp_process(int sock, struct mea_config_s *mea_config, int8_t mode, char cmd
    }
    else {
       switch(cmd) {
+         case 'r': { // reset to factory
+            ESP_LOGW(TAG, "reset to factory defaults ...");
+            tcp_send_data(sock, OK_STATUS);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            homekit_server_reset();
+            nvs_flash_erase();
+            esp_restart();
+            for(::);
+         }
 /*
          default:
             tcp_send_data(sock,"???");
