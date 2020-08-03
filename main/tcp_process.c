@@ -19,6 +19,10 @@ static const char *TAG = "tcp_process";
 
 void tcp_process(int sock, struct mea_config_s *mea_config, int8_t mode, char cmd, char *parameters, void *userdata)
 {
+   if(tcp_network_config(sock, mea_config, mode, cmd, parameters)) {
+      return;
+   }
+   
    if(parameters) {
       switch(cmd) {
          case 'O': {
@@ -96,22 +100,6 @@ void tcp_process(int sock, struct mea_config_s *mea_config, int8_t mode, char cm
             }
             break;
          }
-         case 'W': {
-            ESP_LOGI(TAG, "WIFI setting ...");
-            int r=0;
-            char ssid[41], password[41];
-            int n=sscanf(parameters,"%40[^/]/%40s%n",ssid,password,&r);
-            if(n==2 && r==strlen(parameters)) { 
-               config_set_wifi(ssid, password);
-               tcp_send_data(sock,"OK");
-               ESP_LOGI(TAG, "WIFI setting done");
-            }
-            else {
-               tcp_send_data(sock,"KO");
-               ESP_LOGI(TAG, "WIFI setting KO");
-            }
-            break;
-         };
          default:
             tcp_send_data(sock,"???");
             ESP_LOGW(TAG, "bad command");
@@ -120,37 +108,6 @@ void tcp_process(int sock, struct mea_config_s *mea_config, int8_t mode, char cm
    }
    else {
       switch(cmd) {
-         case 'w':
-            {
-               char s[81]="";
-               sprintf(s,"WIFI_SSID=%s\n",mea_config->wifi_ssid);
-               tcp_send_data(sock,s);
-               sprintf(s,"HOMEKIT_NAME=%s\n",mea_config->accessory_name);
-               tcp_send_data(sock,s);
-               sprintf(s,"HOMEKIT_PASSWORD=%s\n",mea_config->accessory_password);
-               tcp_send_data(sock,s);
-            }
-            break;
-         case 't': // get token
-            {
-               char s[81]="";
-               if(mode==TCP_SERVER_CONFIG) {
-                  sprintf(s,"TOKEN=%s\n",mea_config->token);
-                  tcp_send_data(sock,s);
-               }
-               else {
-                  tcp_send_data(sock,"NA");
-               }
-            }
-            break;
-         case 'C': // reset wifi configuration
-            config_reset_wifi();
-            tcp_send_data(sock,"OK");
-            if(mode == TCP_SERVER_RESTRICTED) {
-               vTaskDelay(1000 / portTICK_PERIOD_MS);
-               esp_restart();
-            }
-            break;
          case 'R': // restart (reboot)
             ESP_LOGW(TAG, "Restart...");
             tcp_send_data(sock,"OK");
