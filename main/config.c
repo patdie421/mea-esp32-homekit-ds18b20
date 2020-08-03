@@ -193,6 +193,66 @@ inline int config_reset_wifi()
 }
 
 
+int tcp_network_config(int sock, struct mea_config_s *mea_config, int8_t mode, char cmd, char *parameters)
+{
+   if(parameters) {
+      switch(cmd) {
+         case 'W': {
+            ESP_LOGI(TAG, "WIFI setting ...");
+            int r=0;
+            char ssid[41], password[41];
+            int n=sscanf(parameters,"%40[^/]/%40s%n",ssid,password,&r);
+            if(n==2 && r==strlen(parameters)) {
+               config_set_wifi(ssid, password);
+               tcp_send_data(sock,"OK");
+               ESP_LOGI(TAG, "WIFI setting done");
+            }
+            else {
+               tcp_send_data(sock,"KO");
+               ESP_LOGI(TAG, "WIFI setting KO");
+            }
+            return 1;
+         }
+      }
+   }
+   else {
+      switch(cmd) {
+         case 'w': {
+            char s[81]="";
+            sprintf(s,"WIFI_SSID=%s\n",mea_config->wifi_ssid);
+            tcp_send_data(sock,s);
+            sprintf(s,"HOMEKIT_NAME=%s\n",mea_config->accessory_name);
+            tcp_send_data(sock,s);
+            sprintf(s,"HOMEKIT_PASSWORD=%s\n",mea_config->accessory_password);
+            tcp_send_data(sock,s);
+            return 1;
+         }
+         case 't': { // get token
+            char s[81]="";
+            if(mode==TCP_SERVER_CONFIG) {
+               sprintf(s,"TOKEN=%s\n",mea_config->token);
+               tcp_send_data(sock,s);
+            }
+            else {
+               tcp_send_data(sock,"NA");
+            }
+            return 1;
+         }
+         case 'C': { // reset wifi configuration
+            config_reset_wifi();
+            tcp_send_data(sock,"OK");
+            if(mode == TCP_SERVER_RESTRICTED) {
+               vTaskDelay(1000 / portTICK_PERIOD_MS);
+               esp_restart();
+            }
+            return 1;
+         }
+      }
+   }
+   return 0;
+}
+
+
 struct mea_config_s *config_init(char *ext)
 {  
    nvs_handle_t my_handle;
