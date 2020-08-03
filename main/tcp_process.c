@@ -108,13 +108,6 @@ void tcp_process(int sock, struct mea_config_s *mea_config, int8_t mode, char cm
    }
    else {
       switch(cmd) {
-         case 'R': // restart (reboot)
-            ESP_LOGW(TAG, "Restart...");
-            tcp_send_data(sock,"OK");
-            ESP_LOGW(TAG, "Restart OK");
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            esp_restart();
-            break;
          default:
             tcp_send_data(sock,"???");
             ESP_LOGW(TAG, "bad command");
