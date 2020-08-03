@@ -168,6 +168,7 @@ static void tcp_server_task(void *pvParameters)
 
 CLEAN_UP:
     close(listen_sock);
+    tcpServer_taskHandle=NULL;
     vTaskDelete(NULL);
 }
 
