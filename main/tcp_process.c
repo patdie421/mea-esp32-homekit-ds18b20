@@ -102,12 +102,6 @@ int tcp_process(int sock, struct mea_config_s *mea_config, int8_t mode, char cmd
             }
             return 1;
          }
-/*
-         default:
-            tcp_send_data(sock,"???");
-            ESP_LOGW(TAG, "bad command");
-            break;
-*/            
       }
    }
    else {
@@ -121,12 +115,6 @@ int tcp_process(int sock, struct mea_config_s *mea_config, int8_t mode, char cmd
             esp_restart();
             for(::);
          }
-/*
-         default:
-            tcp_send_data(sock,"???");
-            ESP_LOGW(TAG, "bad command");
-            break;
-*/
       }
    }
    return 0;
