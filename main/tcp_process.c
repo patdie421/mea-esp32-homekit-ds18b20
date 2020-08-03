@@ -17,10 +17,10 @@
 static const char *TAG = "tcp_process";
 
 
-void tcp_process(int sock, struct mea_config_s *mea_config, int8_t mode, char cmd, char *parameters, void *userdata)
+int tcp_process(int sock, struct mea_config_s *mea_config, int8_t mode, char cmd, char *parameters, void *userdata)
 {
    if(tcp_network_config(sock, mea_config, mode, cmd, parameters)) {
-      return;
+      return 1;
    }
    
    if(parameters) {
@@ -42,7 +42,7 @@ void tcp_process(int sock, struct mea_config_s *mea_config, int8_t mode, char cm
             else {
                tcp_send_data(sock,"???");
             } 
-            break;
+            return 1;
          };
          case 'I': {
             int id,r;
@@ -64,7 +64,7 @@ void tcp_process(int sock, struct mea_config_s *mea_config, int8_t mode, char cm
             else {
                tcp_send_data(sock,"???");
             } 
-            break;
+            return 1;
          };
          case 'H': {
             int id,r,h;
@@ -79,7 +79,7 @@ void tcp_process(int sock, struct mea_config_s *mea_config, int8_t mode, char cm
             else {
                tcp_send_data(sock,"???");
             }
-            break;
+            return 1;
          }
          case 'T': {
             int id,r;
@@ -98,20 +98,25 @@ void tcp_process(int sock, struct mea_config_s *mea_config, int8_t mode, char cm
             else {
                tcp_send_data(sock,"???");
             }
-            break;
+            return 1;
          }
+/*
          default:
             tcp_send_data(sock,"???");
             ESP_LOGW(TAG, "bad command");
             break;
+*/            
       }
    }
    else {
       switch(cmd) {
+/*
          default:
             tcp_send_data(sock,"???");
             ESP_LOGW(TAG, "bad command");
             break;
+*/
       }
    }
+   return 0;
 }
