@@ -13,6 +13,8 @@
 #include "temperature_dht.h"
 #include "temperature_ds18b20.h"
 
+#include <homekit/homekit.h>
+
 
 static const char *TAG = "tcp_process";
 
