@@ -23,5 +23,7 @@ struct mea_config_s *config_get();
 int config_set_wifi(char *wifi_ssid, char *wifi_password);
 int config_reset_wifi();
 
+int tcp_network_config(int sock, struct mea_config_s *mea_config, int8_t mode, char cmd, char *parameters);
+
 #endif
 
