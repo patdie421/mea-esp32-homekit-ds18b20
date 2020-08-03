@@ -23,6 +23,11 @@
 #include "temperature_dht.h"
 #include "temperature_ds18b20.h"
 
+#define OK_STATUS "OK"
+#define KO_STATUS "KO"
+#define BAD_COMMAND_STATUS "???"
+#define BAD_REQUEST_STATUS "!!!"
+#define BAD_CREDENCIAL "###"
 
 #define PORT 8081
 
@@ -73,38 +78,46 @@ static void _do_request(const int sock)
       int n=sscanf(rx_buffer,"%20[^:]:%c%n:%80s%n",token,&cmd,&r1,parameters,&r2);
       if(n<2 || n>3) {
          ESP_LOGE(TAG,"Data error");
-         tcp_send_data(sock,"???");
+         tcp_send_data(sock, BAD_COMMAND_STATUS);
          return;
       }
 
       if(_mode==TCP_SERVER_RESTRICTED) {
          if(strcmp(token,_mea_config->token)!=0) {
             ESP_LOGE(TAG,"Not authorized");
-            tcp_send_data(sock,"BC"); // bad credencial
+            tcp_send_data(sock, BAD_CREDENCIAL); // bad credencial
             return;
          }
       }
       
       if(n==3 && r2==len) {
          if(__callback) {
-            __callback(sock, _mea_config, _mode, cmd, parameters, __userdata);
+            if(__callback(sock, _mea_config, _mode, cmd, parameters, __userdata)==0) {
+               tcp_send_data(sock, BAD_COMMAND_STATUS);
+               ESP_LOGW(TAG, "bad command");
+               return;
+            }
          }
       }
       else if(n==2 && r1==len) {
           if(cmd=='R') {
             ESP_LOGW(TAG, "Restart...");
-            tcp_send_data(sock,"OK");
+            tcp_send_data(sock, OK_STATUS);
             ESP_LOGW(TAG, "Restart OK");
             vTaskDelay(1000 / portTICK_PERIOD_MS);
             esp_restart();
             for(;;);
          }
          else if(__callback) {
-            __callback(sock, _mea_config, _mode, cmd, NULL, __userdata);
+            if(__callback(sock, _mea_config, _mode, cmd, NULL, __userdata)==0) {
+               tcp_send_data(sock, BAD_COMMAND_STATUS);
+               ESP_LOGW(TAG, "bad command");
+               return;
+            }
          }
       }
       else {
-         tcp_send_data(sock,"!!!");
+         tcp_send_data(sock, BAD_REQUEST_STATUS);
          ESP_LOGW(TAG, "bad request");
          return;
       }
