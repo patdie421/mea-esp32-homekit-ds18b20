@@ -91,7 +91,15 @@ static void _do_request(const int sock)
          }
       }
       else if(n==2 && r1==len) {
-         if(__callback) {
+          if(cmd=='R') {
+            ESP_LOGW(TAG, "Restart...");
+            tcp_send_data(sock,"OK");
+            ESP_LOGW(TAG, "Restart OK");
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            esp_restart();
+            for(;;);
+         }
+         else if(__callback) {
             __callback(sock, _mea_config, _mode, cmd, NULL, __userdata);
          }
       }
