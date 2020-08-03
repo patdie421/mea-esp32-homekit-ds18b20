@@ -72,7 +72,7 @@ static void _do_request(const int sock)
       int n=sscanf(rx_buffer,"%20[^:]:%c%n:%80s%n",token,&cmd,&r1,parameters,&r2);
       if(n<2 || n>3) {
          ESP_LOGE(TAG,"Data error");
-         tcp_send_data(sock, BAD_COMMAND_STATUS);
+         tcp_send_data(sock, BAD_REQUEST_STATUS);
          return;
       }
 
@@ -88,24 +88,23 @@ static void _do_request(const int sock)
          if(__callback) {
             if(__callback(sock, _mea_config, _mode, cmd, parameters, __userdata)==0) {
                tcp_send_data(sock, BAD_COMMAND_STATUS);
-               ESP_LOGW(TAG, "bad command");
+               ESP_LOGW(TAG, "unknown command");
                return;
             }
          }
       }
       else if(n==2 && r1==len) {
           if(cmd=='R') {
-            ESP_LOGW(TAG, "Restart...");
             tcp_send_data(sock, OK_STATUS);
-            ESP_LOGW(TAG, "Restart OK");
             vTaskDelay(1000 / portTICK_PERIOD_MS);
+            ESP_LOGW(TAG, "Restarting...");
             esp_restart();
             for(;;);
          }
          else if(__callback) {
             if(__callback(sock, _mea_config, _mode, cmd, NULL, __userdata)==0) {
                tcp_send_data(sock, BAD_COMMAND_STATUS);
-               ESP_LOGW(TAG, "bad command");
+               ESP_LOGW(TAG, "unknown command");
                return;
             }
          }
